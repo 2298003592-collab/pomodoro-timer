@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄钟</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @font-face {
+    font-family: 'Digital';
+    src: local('Consolas'), local('monospace');
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    user-select: none;
+    -webkit-app-region: no-drag;
+  }
+
+  .window {
+    width: 340px;
+    height: 480px;
+    background-color: #1a1a2e;
+    background-image: url('bg.jpg');
+    background-size: cover;
+    background-position: center;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* Title bar */
+  .titlebar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    -webkit-app-region: drag;
+  }
+  .titlebar .title {
+    color: #e0e0e0;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+  .titlebar .controls {
+    display: flex;
+    gap: 6px;
+    -webkit-app-region: no-drag;
+  }
+  .titlebar .ctrl-btn {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .ctrl-btn:hover { opacity: 0.8; }
+  .ctrl-btn.pin { background: #ffc107; }
+  .ctrl-btn.pin.active { background: #4caf50; }
+  .ctrl-btn.min { background: #ff9800; }
+  .ctrl-btn.close { background: #f44336; }
+
+  /* Main content */
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 30px;
+  }
+
+  /* Session tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: #16213e;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 24px;
+  }
+  .tab {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+  }
+  .tab.active {
+    background: #0f3460;
+    color: #e94560;
+    font-weight: 600;
+  }
+
+  /* Timer ring */
+  .timer-container {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin-bottom: 24px;
+  }
+  .ring-bg {
+    fill: none;
+    stroke: #16213e;
+    stroke-width: 8;
+  }
+  .ring-progress {
+    fill: none;
+    stroke: #e94560;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    transition: stroke-dashoffset 1s linear;
+  }
+  .ring-progress.break { stroke: #4caf50; }
+  .time-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    font-weight: 700;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    font-family: 'Digital', 'Consolas', monospace;
+    letter-spacing: 2px;
+  }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .btn:active { transform: scale(0.95); }
+  .btn-start {
+    width: 60px;
+    height: 60px;
+    background: #e94560;
+    color: #fff;
+    font-size: 22px;
+    box-shadow: 0 4px 20px rgba(233,69,96,0.4);
+  }
+  .btn-start:hover { background: #d63851; }
+  .btn-start.paused { background: #4caf50; box-shadow: 0 4px 20px rgba(76,175,80,0.4); }
+  .btn-reset {
+    background: #16213e;
+    color: #aaa;
+  }
+  .btn-reset:hover { background: #1a1a3e; color: #fff; }
+  .btn-skip {
+    background: #16213e;
+    color: #aaa;
+  }
+  .btn-skip:hover { background: #1a1a3e; color: #fff; }
+
+  /* Session info */
+  .session-info {
+    color: #888;
+    font-size: 13px;
+    text-align: center;
+  }
+  .session-info span {
+    color: #e94560;
+    font-weight: 600;
+  }
+
+  /* Settings panel */
+  .settings {
+    margin-top: 12px;
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+    color: #666;
+  }
+  .settings label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .settings input {
+    width: 36px;
+    background: #16213e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #ccc;
+    text-align: center;
+    padding: 2px;
+    font-size: 11px;
+    font-family: inherit;
+  }
+  .settings input:focus { outline: none; border-color: #e94560; }
+
+  /* Audio toggle */
+  .sound-toggle {
+    margin-top: 8px;
+    color: #666;
+    font-size: 11px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+  }
+  .sound-toggle.on { color: #4caf50; }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <span class="title">番茄钟</span>
+    <div class="controls">
+      <button class="ctrl-btn pin" id="pinBtn" title="置顶"></button>
+      <button class="ctrl-btn min" id="minBtn" title="最小化"></button>
+      <button class="ctrl-btn close" id="closeBtn" title="关闭到托盘"></button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="tabs">
+      <button class="tab active" data-mode="work">工作</button>
+      <button class="tab" data-mode="shortBreak">短休息</button>
+      <button class="tab" data-mode="longBreak">长休息</button>
+    </div>
+
+    <div class="timer-container">
+      <svg width="220" height="220" viewBox="0 0 220 220">
+        <circle class="ring-bg" cx="110" cy="110" r="100"/>
+        <circle class="ring-progress" id="progressRing" cx="110" cy="110" r="100"
+                stroke-dasharray="628.32" stroke-dashoffset="0"/>
+      </svg>
+      <div class="time-display" id="timeDisplay">25:00</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-reset" id="resetBtn" title="重置">↺</button>
+      <button class="btn btn-start" id="startBtn" title="开始">▶</button>
+      <button class="btn btn-skip" id="skipBtn" title="跳过">⏭</button>
+    </div>
+
+    <div class="session-info">
+      今日完成 <span id="sessionCount">0</span> 个番茄
+    </div>
+
+    <div class="settings">
+      <label>工作<input type="number" id="workMin" value="25" min="1" max="60"></label>
+      <label>短休<input type="number" id="shortBreakMin" value="5" min="1" max="30"></label>
+      <label>长休<input type="number" id="longBreakMin" value="15" min="1" max="60"></label>
+      <label>长休间隔<input type="number" id="longBreakInterval" value="4" min="1" max="10"></label>
+    </div>
+
+    <button class="sound-toggle on" id="soundToggle">🔔 提示音</button>
+  </div>
+</div>
+
+<script>
+const { ipcRenderer } = require('electron');
+
+// DOM
+const timeDisplay = document.getElementById('timeDisplay');
+const progressRing = document.getElementById('progressRing');
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const skipBtn = document.getElementById('skipBtn');
+const sessionCount = document.getElementById('sessionCount');
+const tabs = document.querySelectorAll('.tab');
+const pinBtn = document.getElementById('pinBtn');
+const soundToggle = document.getElementById('soundToggle');
+
+const CIRCUMFERENCE = 2 * Math.PI * 100; // 628.32
+
+// State
+let mode = 'work';
+let durations = { work: 25, shortBreak: 5, longBreak: 15 };
+let longBreakInterval = 4;
+let timeLeft = 25 * 60;
+let totalTime = 25 * 60;
+let timerId = null;
+let isRunning = false;
+let sessions = parseInt(localStorage.getItem('pomodoro_sessions') || '0');
+let today = new Date().toDateString();
+let soundEnabled = localStorage.getItem('pomodoro_sound') !== 'off';
+let alwaysOnTop = false;
+
+// Apply saved state
+if (!soundEnabled) soundToggle.classList.remove('on');
+sessionCount.textContent = sessions;
+
+function updateDurations() {
+  durations.work = parseInt(document.getElementById('workMin').value) || 25;
+  durations.shortBreak = parseInt(document.getElementById('shortBreakMin').value) || 5;
+  durations.longBreak = parseInt(document.getElementById('longBreakMin').value) || 15;
+  longBreakInterval = parseInt(document.getElementById('longBreakInterval').value) || 4;
+  resetTimer();
+}
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function updateDisplay() {
+  timeDisplay.textContent = formatTime(timeLeft);
+  const progress = timeLeft / totalTime;
+  progressRing.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+}
+
+function resetTimer() {
+  stopTimer();
+  totalTime = durations[mode] * 60;
+  timeLeft = totalTime;
+  updateDisplay();
+  startBtn.textContent = '▶';
+  startBtn.classList.remove('paused');
+  document.title = '番茄钟';
+}
+
+function stopTimer() {
+  if (timerId) {
+    clearInterval(timerId);
+    timerId = null;
+  }
+  isRunning = false;
+}
+
+function playSound() {
+  if (!soundEnabled) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.4);
+    osc.start(ctx.currentTime + i * 0.15);
+    osc.stop(ctx.currentTime + i * 0.15 + 0.4);
+  });
+}
+
+function notify(title, body) {
+  ipcRenderer.send('notify', { title, body });
+  ipcRenderer.send('flash-frame');
+}
+
+function onSessionEnd() {
+  stopTimer();
+  isRunning = false;
+  playSound();
+
+  if (mode === 'work') {
+    sessions++;
+    const storedDate = localStorage.getItem('pomodoro_date');
+    if (storedDate !== today) {
+      sessions = 1;
+      localStorage.setItem('pomodoro_date', today);
+    }
+    localStorage.setItem('pomodoro_sessions', sessions);
+    sessionCount.textContent = sessions;
+    notify('🍅 番茄完成！', '休息一下吧~');
+
+    // Determine next break type
+    if (sessions % longBreakInterval === 0) {
+      switchMode('longBreak');
+    } else {
+      switchMode('shortBreak');
+    }
+  } else {
+    notify('休息结束', '开始新的番茄吧！');
+    switchMode('work');
+  }
+
+  // Auto start next session
+  resetTimer();
+  startTimer();
+}
+
+function tick() {
+  if (timeLeft <= 0) {
+    onSessionEnd();
+    return;
+  }
+  timeLeft--;
+  updateDisplay();
+  document.title = `${formatTime(timeLeft)} - 番茄钟`;
+}
+
+function startTimer() {
+  if (isRunning) return;
+  isRunning = true;
+  timerId = setInterval(tick, 1000);
+  startBtn.textContent = '⏸';
+  startBtn.classList.add('paused');
+}
+
+function pauseTimer() {
+  stopTimer();
+  startBtn.textContent = '▶';
+  startBtn.classList.remove('paused');
+  document.title = '番茄钟 - 已暂停';
+}
+
+function switchMode(newMode) {
+  mode = newMode;
+  tabs.forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+  const ring = progressRing;
+  ring.classList.toggle('break', mode !== 'work');
+  resetTimer();
+}
+
+// Event listeners
+startBtn.addEventListener('click', () => {
+  if (isRunning) {
+    pauseTimer();
+  } else {
+    startTimer();
+  }
+});
+
+resetBtn.addEventListener('click', resetTimer);
+skipBtn.addEventListener('click', onSessionEnd);
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    pauseTimer();
+    switchMode(tab.dataset.mode);
+  });
+});
+
+pinBtn.addEventListener('click', () => {
+  alwaysOnTop = !alwaysOnTop;
+  pinBtn.classList.toggle('active', alwaysOnTop);
+  ipcRenderer.send('set-always-on-top', alwaysOnTop);
+});
+
+document.getElementById('minBtn').addEventListener('click', () => {
+  ipcRenderer.send('minimize');
+});
+
+document.getElementById('closeBtn').addEventListener('click', () => {
+  ipcRenderer.send('close');
+});
+
+soundToggle.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  soundToggle.classList.toggle('on', soundEnabled);
+  localStorage.setItem('pomodoro_sound', soundEnabled ? 'on' : 'off');
+});
+
+// Settings change
+['workMin', 'shortBreakMin', 'longBreakMin', 'longBreakInterval'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    updateDurations();
+  });
+});
+
+// Check date rollover
+if (localStorage.getItem('pomodoro_date') !== today) {
+  localStorage.setItem('pomodoro_date', today);
+  localStorage.setItem('pomodoro_sessions', '0');
+  sessions = 0;
+  sessionCount.textContent = '0';
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    isRunning ? pauseTimer() : startTimer();
+  } else if (e.code === 'KeyR') {
+    resetTimer();
+  } else if (e.code === 'KeyS') {
+    onSessionEnd();
+  }
+});
+
+// Init
+updateDisplay();
+</script>
+</body>
+</html>
