@@ -1,16 +1,19 @@
 {
   "name": "pomodoro-timer",
   "version": "1.0.0",
-  "description": "桌面番茄钟 - 专注工作计时器",
+  "description": "桌面番茄钟 - 专注工作计时器 + 网易云音乐播放",
   "author": "HAI TANG",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-packager . 番茄钟 --platform=win32 --arch=x64 --out=dist --overwrite",
-    "build:win": "electron-packager . 番茄钟 --platform=win32 --arch=x64 --out=dist --overwrite"
+    "start": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "build": "node build.js",
+    "build:win": "node build.js"
   },
   "devDependencies": {
     "electron": "^33.0.0",
     "electron-packager": "^17.1.2"
+  },
+  "dependencies": {
+    "NeteaseCloudMusicApi": "^4.31.0"
   }
 }
